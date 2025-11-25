@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Forms.DataVisualization.Charting;
 
 namespace prezzoequi
 {
@@ -15,53 +16,99 @@ namespace prezzoequi
         public Form1()
         {
             InitializeComponent();
+            SetupChart();
+            SetupDataGrid();
+        }
+        private double domandaIntercetta = 90;
+        private double domandaPendenza = 4;
+        private double offertaTermineCostante = 10;
+        private double offertaCoefficiente = 0.01;
+        private double offertaEsponente = 3;
+
+        public void btn_insert_Click(object sender, EventArgs e)
+        {
+            CalculateData();
+        }
+        public void SetupChart()
+        {
+            ChartArea chartArea = new ChartArea();
+            chart_eq.ChartAreas.Add(chartArea);
+
+            Series seriesDomanda = new Series("Domanda");
+            seriesDomanda.ChartType = SeriesChartType.Line;
+            seriesDomanda.Color = Color.Red;
+            chart_eq.Series.Add(seriesDomanda);
+
+            Series seriesOfferta = new Series("Offerta");
+            seriesOfferta.ChartType = SeriesChartType.Line;
+            seriesOfferta.Color = Color.Blue;
+            chart_eq.Series.Add(seriesOfferta);
+
+            chartArea.AxisX.Title = "Quantità (q)";
+            chartArea.AxisY.Title = "Prezzo (p)";
+            chartArea.AxisX.Minimum = 0;
+            chartArea.AxisX.Maximum = 20;
+        }
+        public void SetupDataGrid()
+        {
+            dgv_dati.Columns.Clear();
+            dgv_dati.Columns.Add("Qta", "Quantità");
+            dgv_dati.Columns.Add("Domanda", "Prezzo Domanda");
+            dgv_dati.Columns.Add("Offerta", "Prezzo Offerta");
         }
 
-        private void btn_insert_Click(object sender, EventArgs e)
+        public void CalculateData()
         {
-            private (double Quantita, double Prezzo) TrovaEquilibrio(
-            double domandaInt, double domandaCoeff,
-            double offertaInt, double offertaCoeff, double offertaEsp)
-        {
-            double qMin = 0;
-            double qMax = 20;
-            double tolleranza = 0.001;
-            int maxIterazioni = 1000;
-
-            for (int i = 0; i < maxIterazioni; i++)
+            if (!double.TryParse(tb_q.Text, out double maxQta))
             {
-                double qMedio = (qMin + qMax) / 2;
-                double differenza = CalcolaDifferenza(qMedio, domandaInt, domandaCoeff, offertaInt, offertaCoeff, offertaEsp);
-
-                if (Math.Abs(differenza) < tolleranza)
-                {
-                    double prezzo = domandaInt - domandaCoeff * qMedio;
-                    return (qMedio, prezzo);
-                }
-
-                double diffMin = CalcolaDifferenza(qMin, domandaInt, domandaCoeff, offertaInt, offertaCoeff, offertaEsp);
-
-                if (diffMin * differenza < 0)
-                    qMax = qMedio;
-                else
-                    qMin = qMedio;
+                MessageBox.Show("Inserire una quantità valida");
+                return;
             }
 
-            double qFinale = (qMin + qMax) / 2;
-            double pFinale = domandaInt - domandaCoeff * qFinale;
-            return (qFinale, pFinale);
+            dgv_dati.Rows.Clear();
+            chart_eq.Series["Domanda"].Points.Clear();
+            chart_eq.Series["Offerta"].Points.Clear();
+
+            double equilibrioQta = 0;
+            double equilibrioPrezzo = 0;
+            double minDiff = double.MaxValue;
+
+            for (double q = 0; q <= maxQta; q += 0.5)
+            {
+                double prezzoDomanda = domandaIntercetta - (domandaPendenza * q);
+                double prezzoOfferta = offertaTermineCostante + offertaCoefficiente * Math.Pow(q, offertaEsponente);
+
+                // Aggiungi punti al grafico
+                chart_eq.Series["Domanda"].Points.AddXY(q, prezzoDomanda);
+                chart_eq.Series["Offerta"].Points.AddXY(q, prezzoOfferta);
+
+                // Aggiungi riga alla griglia
+                dgv_dati.Rows.Add(
+                    Math.Round(q, 1),
+                    Math.Round(prezzoDomanda, 2),
+                    Math.Round(prezzoOfferta, 2)
+                );
+
+                // Calcola punto di equilibrio
+                double diff = Math.Abs(prezzoDomanda - prezzoOfferta);
+                if (diff < minDiff)
+                {
+                    minDiff = diff;
+                    equilibrioQta = q;
+                    equilibrioPrezzo = (prezzoDomanda + prezzoOfferta) / 2;
+                }
+            }
+
+            // Mostra equilibrio
+            dgv_dati.Rows.Add(
+                 ($"Punto di equilibrio:"),
+                 ($"Quantità: {Math.Round(equilibrioQta, 2)} "),
+                 ($"Prezzo: {Math.Round(equilibrioPrezzo, 2)}"));
         }
 
-        private double CalcolaDifferenza(double q, double domandaInt, double domandaCoeff,
-                                 double offertaInt, double offertaCoeff, double offertaEsp)
-        {
-            double prezzoDomanda = domandaInt - domandaCoeff * q;
-            double prezzoOfferta = offertaInt + offertaCoeff * Math.Pow(q, offertaEsp);
-            return prezzoDomanda - prezzoOfferta;
-        }
-    
+
 
     }
 }
-    
+
 
